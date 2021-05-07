@@ -1,12 +1,9 @@
-
-
-include "console.iol"
-include "file.iol"
-include "string_utils.iol"
-include "runtime.iol"
-include "protocols/http.iol"
-
-include "FrontendInterface.iol"
+from console import Console
+from file import File
+from string_utils import StringUtils
+from runtime import Runtime
+from protocols.http import DefaultOperationHttpRequest
+from .frontend import Main as Frontend
 
 constants {
 
@@ -20,86 +17,87 @@ constants {
 	DebugHttpContent = false
 }
 
-
-execution { concurrent }
-
-outputPort Frontend {
-	Interfaces: FrontendInterface
-}
-
-embedded {
-	Jolie: "frontend.ol" in Frontend
-
-}
-
 interface HTTPInterface {
 RequestResponse:
 	default(DefaultOperationHttpRequest)(undefined)
 }
 
-inputPort HTTPInput {
-Protocol: http {
-	.keepAlive = true; // Keep connections open
-	.debug = DebugHttp;
-	.debug.showContent = DebugHttpContent;
-	.format -> format;
-	.contentType -> mime;
-	.statusCode -> statusCode;
-
-	.default = "default"
-}
-Location: Location
-Interfaces: HTTPInterface
-Aggregates: Frontend
+type Params {
+	location: string
 }
 
-init
-{
-	// TODO: get it from the current dir
-	getenv@Runtime( "JOLIE_HOME" )( JOLIE_HOME )
+service Main(params:Params) {
+	execution: concurrent
+	embed Frontend as Frontend
+	embed StringUtils as StringUtils
+	embed Console as Console
+	embed File as File
+	embed Runtime as Runtime
 	
-	RootContentDirectory = JOLIE_HOME + "/include/services/jolietraceviewer/www/"
-	if ( is_defined( args[0] ) ) {
-		documentRootDirectory = args[0]
-	} else {
-		documentRootDirectory = RootContentDirectory
+	inputPort HTTPInput {
+	Protocol: http {
+		.keepAlive = true; // Keep connections open
+		.debug = DebugHttp;
+		.debug.showContent = DebugHttpContent;
+		.format -> format;
+		.contentType -> mime;
+		.statusCode -> statusCode;
+
+		.default = "default"
 	}
-	replaceAll@StringUtils( Location { .regex="socket", .replacement="http"} )( http_location )
-	println@Console("Jolie Trace Viewer is running, open your browser and set the url " + http_location )()
-}
+	Location: params.location
+	Interfaces: HTTPInterface
+	Aggregates: Frontend
+	}
 
-main
-{
-	[ default( request )( response ) {
-		scope( s ) {
-			install( FileNotFound => nullProcess; statusCode = 404 );
-
-			split@StringUtils( request.operation { .regex = "\\?" } )( s );
-
-			// Default page
-			shouldAddIndex = false;
-			if ( s.result[0] == "" ) {
-				shouldAddIndex = true
-			} else {
-				endsWith@StringUtils( s.result[0] { .suffix = "/" } )( shouldAddIndex )
-			};
-			if ( shouldAddIndex ) {
-				s.result[0] += DefaultPage
-			};
-
-			file.filename = documentRootDirectory + s.result[0];
-
-			getMimeType@File( file.filename )( mime );
-			mime.regex = "/";
-			split@StringUtils( mime )( s );
-			if ( s.result[0] == "text" ) {
-				file.format = "text";
-				format = "html"
-			} else {
-				file.format = format = "binary"
-			};
-
-			readFile@File( file )( response )
+	init
+	{
+		// TODO: get it from the current dir
+		getenv@Runtime( "JOLIE_HOME" )( JOLIE_HOME )
+		
+		RootContentDirectory = JOLIE_HOME + "/include/services/jolietraceviewer/www/"
+		if ( is_defined( args[0] ) ) {
+			documentRootDirectory = args[0]
+		} else {
+			documentRootDirectory = RootContentDirectory
 		}
-	} ] { nullProcess }
+		replaceAll@StringUtils( Location { .regex="socket", .replacement="http"} )( http_location )
+		println@Console("Jolie Trace Viewer is running, open your browser and set the url " + http_location )()
+	}
+
+	main
+	{
+		[ default( request )( response ) {
+			scope( s ) {
+				install( FileNotFound => nullProcess; statusCode = 404 );
+
+				split@StringUtils( request.operation { .regex = "\\?" } )( s );
+
+				// Default page
+				shouldAddIndex = false;
+				if ( s.result[0] == "" ) {
+					shouldAddIndex = true
+				} else {
+					endsWith@StringUtils( s.result[0] { .suffix = "/" } )( shouldAddIndex )
+				};
+				if ( shouldAddIndex ) {
+					s.result[0] += DefaultPage
+				};
+
+				file.filename = documentRootDirectory + s.result[0];
+
+				getMimeType@File( file.filename )( mime );
+				mime.regex = "/";
+				split@StringUtils( mime )( s );
+				if ( s.result[0] == "text" ) {
+					file.format = "text";
+					format = "html"
+				} else {
+					file.format = format = "binary"
+				};
+
+				readFile@File( file )( response )
+			}
+		} ] { nullProcess }
+	}
 }
