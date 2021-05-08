@@ -24,6 +24,7 @@ RequestResponse:
 
 type Params {
 	location: string
+	wwwDir: string
 }
 
 service Main(params:Params) {
@@ -36,14 +37,14 @@ service Main(params:Params) {
 	
 	inputPort HTTPInput {
 	Protocol: http {
-		.keepAlive = true; // Keep connections open
-		.debug = DebugHttp;
-		.debug.showContent = DebugHttpContent;
-		.format -> format;
-		.contentType -> mime;
-		.statusCode -> statusCode;
+		keepAlive = true // Keep connections open
+		debug = DebugHttp
+		debug.showContent = DebugHttpContent
+		format -> format
+		contentType -> mime
+		statusCode -> statusCode
 
-		.default = "default"
+		default = "default"
 	}
 	Location: params.location
 	Interfaces: HTTPInterface
@@ -52,16 +53,12 @@ service Main(params:Params) {
 
 	init
 	{
-		// TODO: get it from the current dir
-		getenv@Runtime( "JOLIE_HOME" )( JOLIE_HOME )
-		
-		RootContentDirectory = JOLIE_HOME + "/include/services/jolietraceviewer/www/"
 		if ( is_defined( args[0] ) ) {
 			documentRootDirectory = args[0]
 		} else {
-			documentRootDirectory = RootContentDirectory
+			documentRootDirectory = params.wwwDir
 		}
-		replaceAll@StringUtils( Location { .regex="socket", .replacement="http"} )( http_location )
+		replaceAll@StringUtils( params.location { .regex="socket", .replacement="http"} )( http_location )
 		println@Console("Jolie Trace Viewer is running, open your browser and set the url " + http_location )()
 	}
 
