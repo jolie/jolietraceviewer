@@ -1,5 +1,5 @@
 {
-	"name": "jolietraceviewer",
+	"name": "@jolie/jolietraceviewer",
 	"description": "A web viewer for Jolie JSON trace files",
 	"contributors": [
 		{
