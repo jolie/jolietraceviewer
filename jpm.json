@@ -16,7 +16,7 @@
 	},
 	"version": "0.1.0",
 	"license": "LGPL 2.1",
-	"keywords": [],
+	"keywords": ["jolie","microservices"],
 	"scripts": {
 		"jolive": "npx nodemon --exec jolie ./jolietraceviewer.ol",
 		"clean": "rm ./hs_err_pid*"
